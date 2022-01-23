@@ -11,12 +11,6 @@ import (
 	"wms_slave/server"
 )
 
-type Model struct {
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt
-}
-
 var DB *gorm.DB
 
 func Init() {
@@ -53,3 +47,9 @@ func getDSN() string {
 		server.DatabaseConfig.DatabaseName,
 	)
 }
+
+//type Model struct {
+//	CreatedAt time.Time
+//	UpdatedAt time.Time
+//	DeletedAt gorm.DeletedAt
+//}

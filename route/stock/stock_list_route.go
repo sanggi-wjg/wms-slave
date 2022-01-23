@@ -19,10 +19,13 @@ func ListToExcel(context *gin.Context) {
 		return
 	}
 
-	partnerId := context.DefaultQuery("partnerId", "")
-	log.Println("partnerId:" + partnerId)
+	param := map[string]string{}
+	param["partnerId"] = context.DefaultQuery("partnerId", "")
+	param["partnerUserType"] = context.DefaultQuery("partnerUserType", "")
+	param["transferCompany"] = context.DefaultQuery("transferCompany", "")
+	log.Println("Param:", param)
 
-	filename := makeToStockExcel()
+	filename := makeToStockExcel(param)
 	//context.Header("Content-Description", "File Transfer")
 	//context.Header("Content-Transfer-Encoding", "binary")
 	//context.Header("Content-Disposition", "attachment; filename="+filename)
