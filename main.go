@@ -6,12 +6,13 @@ import (
 	"wms_slave/route"
 	"wms_slave/server"
 	"wms_slave/server/database"
+	"wms_slave/server/logger"
 )
 
 func init() {
 	server.Init()
 	database.Init()
-
+	logger.Init(server.Config.Debug)
 	if server.Config.Debug {
 		gin.ForceConsoleColor()
 	}

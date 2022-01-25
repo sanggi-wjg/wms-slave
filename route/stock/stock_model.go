@@ -81,10 +81,32 @@ func findByStockCd(stockCd string) (*Stock, error) {
 	return &stock, nil
 }
 
-func searchMap(param map[string]string) ([]Stock, error) {
+func searchMap(param map[string]interface{}) ([]Stock, error) {
 	var stocks []Stock
-	res := database.DB.Find(&stocks).Order("RegDate")
+	//res := database.DB.Where(param).Order("regDate").Find(&stocks)
+	db := database.DB
 
+	if param["fromDate"] != "" {
+		t, _ := time.Parse("2006-01-02", param["fromDate"].(string))
+		ts := t.Format("2006-01-02 15:04:05")
+		db = db.Where("regDate >= ?", ts)
+	}
+	if param["toDate"] != "" {
+		t, _ := time.Parse("2006-01-02", param["toDate"].(string))
+		ts := t.Format("2006-01-02") + " 23:59:59"
+		db = db.Where("regDate <= ?", ts)
+	}
+	if param["partnerId"] != "" {
+		db = db.Where("partnerId = ?", param["partnerId"])
+	}
+	if param["partnerUserType"] != "" {
+		db = db.Where("partnerUserType = ?", param["partnerUserType"])
+	}
+	if param["transferCompany"] != "" {
+		db = db.Where("transferCompany = ?", param["transferCompany"])
+	}
+
+	res := db.Order("regDate").Find(&stocks)
 	if res.Error != nil && res.Error != gorm.ErrRecordNotFound {
 		return nil, res.Error
 	}

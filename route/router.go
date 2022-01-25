@@ -7,6 +7,7 @@ import (
 	"wms_slave/route/home"
 	"wms_slave/route/stock"
 	"wms_slave/server"
+	"wms_slave/server/middleware"
 )
 
 func Init() *gin.Engine {
@@ -28,7 +29,11 @@ func Init() *gin.Engine {
 	router.GET("/panic", home.PanicTest)
 
 	// Excel
-	router.GET("/stock_list", stock.ListToExcel)
+	excel := router.Group("/v1/excel")
+	excel.Use(middleware.ExcelHeader())
+	{
+		excel.GET("/stock/list", stock.ListToExcel)
+	}
 
 	router.GET("/long_async", func(c *gin.Context) {
 		// create copy to be used inside the goroutine

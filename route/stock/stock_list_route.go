@@ -2,30 +2,11 @@ package stock
 
 import (
 	"github.com/gin-gonic/gin"
-	"log"
-	"net/http"
-	"wms_slave/server/e"
+	"wms_slave/server/logger"
 )
 
 func ListToExcel(context *gin.Context) {
-	warehouseDomain := context.GetHeader("WAREHOUSE_DOMAIN")
-	switch warehouseDomain {
-	case "kr01.warehouse.pickby.us":
-	case "kr02.warehouse.pickby.us":
-	case "api.wms.warehouse.pickby.us":
-		break
-	default:
-		context.String(http.StatusBadRequest, e.NewException(e.InvalidRequestHeader).Error())
-		return
-	}
-
-	param := map[string]string{}
-	param["warehouseDomain"] = context.DefaultQuery("warehouseDomain", context.GetHeader("WAREHOUSE_DOMAIN"))
-	param["partnerId"] = context.DefaultQuery("partnerId", "")
-	param["partnerUserType"] = context.DefaultQuery("partnerUserType", "")
-	param["transferCompany"] = context.DefaultQuery("transferCompany", "")
-	log.Println("Param:", param)
-
+	param := makeParamMap(context)
 	filename := makeExcelFile(param)
 
 	context.Header("Content-Description", "File Transfer")
@@ -35,5 +16,27 @@ func ListToExcel(context *gin.Context) {
 	context.Header("Expires", "0")
 	context.Header("Connection", "close")
 	context.File(filename)
-	//context.String(http.StatusOK, filename)
+}
+
+func makeParamMap(c *gin.Context) map[string]interface{} {
+	p := map[string]interface{}{}
+	defer logger.Log.Debug(p)
+
+	// http://localhost:9000/v1/excel/stock/list?partnerId=jamy&fromDate=2020-01-01&toDate=2022-01-01
+	//p["warehouseDomain"] = c.DefaultQuery("warehouseDomain", c.GetHeader("WAREHOUSE_DOMAIN"))
+	p["fromDate"] = c.DefaultQuery("fromDate", "")
+	p["toDate"] = c.DefaultQuery("toDate", "")
+	p["partnerId"] = c.DefaultQuery("partnerId", "")
+	p["partnerUserType"] = c.DefaultQuery("partnerUserType", "")
+	p["transferCompany"] = c.DefaultQuery("transferCompany", "")
+	p["code"] = c.DefaultQuery("code", "")
+	p["rackCd"] = c.DefaultQuery("rackCd", "")
+	p["productName"] = c.DefaultQuery("productName", "")
+	p["productOption"] = c.DefaultQuery("productOption", "")
+	p["rackCd"] = c.DefaultQuery("rackCd", "")
+	p["productBrandName"] = c.DefaultQuery("productBrandName", "")
+	p["inWaybillNo"] = c.DefaultQuery("inWaybillNo", "")
+	p["inOrderCd"] = c.DefaultQuery("inOrderCd", "")
+
+	return p
 }
