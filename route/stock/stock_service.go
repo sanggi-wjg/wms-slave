@@ -1,32 +1,52 @@
 package stock
 
 import (
+	"fmt"
 	"github.com/xuri/excelize/v2"
 	"log"
 	"strconv"
 )
 
-func makeToStockExcel(param map[string]string) string {
-	f := excelize.NewFile()
+func makeExcelFile(param map[string]string) string {
+	filename := getFilename(param)
 	sheetName := "Sheet1"
-	index := f.NewSheet(sheetName)
+
+	f := excelize.NewFile()
+	sheetIndex := f.NewSheet(sheetName)
+
+	var writeResult []bool
+	channel := make(chan bool)
 
 	stocks, _ := searchMap(param)
-
 	for i := 0; i < len(stocks); i++ {
-		log.Println("A"+strconv.Itoa(i+1), stocks[i].Idx, stocks[i].ProductCd)
-		f.SetCellValue(sheetName, "A"+strconv.Itoa(i+1), stocks[i].Idx)
+		go writeRow(f, sheetName, i, stocks[i], channel)
 	}
-	f.SetActiveSheet(index)
+	for i := 0; i < len(stocks); i++ {
+		writeResult = append(writeResult, <-channel)
+	}
+	log.Println("writeResult", writeResult)
 
-	filename := "test.xlsx"
+	f.SetActiveSheet(sheetIndex)
 	if err := f.SaveAs(filename); err != nil {
-		panic(err)
+		log.Panic(err)
 	}
-
 	return filename
 }
 
-func getFilename() string {
-	return ""
+func getFilename(param map[string]string) string {
+	return "text.xlsx"
+}
+
+func writeRow(f *excelize.File, sheetName string, i int, stock Stock, c chan bool) {
+	rowNo := strconv.Itoa(i + 2)
+	if err := f.SetCellValue(sheetName, "A"+rowNo, i+1); err != nil {
+		c <- false
+	}
+	if err := f.SetCellValue(sheetName, "B"+rowNo, stock.RackCd); err != nil {
+		c <- false
+	}
+	if err := f.SetCellValue(sheetName, "C"+rowNo, fmt.Sprintf("%s(%s)", stock.PartnerName, stock.PartnerId)); err != nil {
+		c <- false
+	}
+	c <- true
 }
