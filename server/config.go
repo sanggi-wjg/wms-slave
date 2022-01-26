@@ -17,12 +17,19 @@ type Server struct {
 }
 
 type Database struct {
-	Type         string
-	Host         string
-	Port         int
-	User         string
-	Password     string
-	DatabaseName string
+	KR01Type         string
+	KR01Host         string
+	KR01Port         int
+	KR01User         string
+	KR01Password     string
+	KR01DatabaseName string
+
+	CN02Type         string
+	CN02Host         string
+	CN02Port         int
+	CN02User         string
+	CN02Password     string
+	CN02DatabaseName string
 }
 
 type App struct {

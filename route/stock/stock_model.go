@@ -1,6 +1,7 @@
-package model
+package stock
 
 import (
+	"fmt"
 	"gorm.io/gorm"
 	"time"
 	"wms_slave/server/database"
@@ -60,18 +61,18 @@ func (Stock) TableName() string {
 	return "stock"
 }
 
-func FindById(id uint64) (Stock, error) {
+func FindById(warehouseId string, id uint64) (Stock, error) {
 	var stock Stock
-	res := database.DB.Where(Stock{Idx: id}).Take(&stock)
+	res := database.DB[warehouseId].Where(Stock{Idx: id}).Take(&stock)
 	if res.Error != nil {
 		return stock, res.Error
 	}
 	return stock, nil
 }
 
-func FindByStockCd(stockCd string) (*Stock, error) {
+func FindByStockCd(warehouseId string, stockCd string) (*Stock, error) {
 	var stock Stock
-	res := database.DB.Where(Stock{StockCd: stockCd}).Take(&stock)
+	res := database.DB[warehouseId].Where(Stock{StockCd: stockCd}).Take(&stock)
 	if res.Error == gorm.ErrRecordNotFound {
 		return nil, e.NewExceptionAddMsg(e.ErrorStockNotFound, stockCd)
 	}
@@ -81,30 +82,35 @@ func FindByStockCd(stockCd string) (*Stock, error) {
 	return &stock, nil
 }
 
-func SearchMap(param map[string]interface{}) ([]Stock, error) {
+func ifValueThenWhereEqual(db *gorm.DB, column string, value interface{}) *gorm.DB {
+	if value != "" && value != nil {
+		return db.Where(fmt.Sprintf("%s = ?", column), value)
+	}
+	return db
+}
+
+func search(warehouseId string, param parameter) ([]Stock, error) {
 	var stocks []Stock
 	//res := database.DB.Where(param).Order("regDate").Find(&stocks)
-	db := database.DB
+	db := database.DB[warehouseId]
 
-	if param["fromDate"] != "" {
-		t, _ := time.Parse("2006-01-02", param["fromDate"].(string))
+	if param.FromDate != "" {
+		t, _ := time.Parse("2006-01-02", param.FromDate)
 		ts := t.Format("2006-01-02 15:04:05")
 		db = db.Where("regDate >= ?", ts)
 	}
-	if param["toDate"] != "" {
-		t, _ := time.Parse("2006-01-02", param["toDate"].(string))
+	if param.ToDate != "" {
+		t, _ := time.Parse("2006-01-02", param.ToDate)
 		ts := t.Format("2006-01-02") + " 23:59:59"
 		db = db.Where("regDate <= ?", ts)
 	}
-	if param["partnerId"] != "" {
-		db = db.Where("partnerId = ?", param["partnerId"])
-	}
-	if param["partnerUserType"] != "" {
-		db = db.Where("partnerUserType = ?", param["partnerUserType"])
-	}
-	if param["transferCompany"] != "" {
-		db = db.Where("transferCompany = ?", param["transferCompany"])
-	}
+	//if param["partnerId"] != "" {
+	//	db = db.Where("partnerId = ?", param["partnerId"])
+	//}
+	db = ifValueThenWhereEqual(db, "partnerId", param.PartnerId)
+	db = ifValueThenWhereEqual(db, "productOwner", param.ProductOwner)
+	db = ifValueThenWhereEqual(db, "partnerUserType", param.PartnerUserType)
+	db = ifValueThenWhereEqual(db, "transferCompany", param.TransferCompany)
 
 	res := db.Order("regDate").Find(&stocks)
 	if res.Error != nil && res.Error != gorm.ErrRecordNotFound {

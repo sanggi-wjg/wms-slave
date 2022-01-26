@@ -1,11 +1,10 @@
-package service
+package stock
 
 import (
 	"fmt"
 	"github.com/xuri/excelize/v2"
 	"log"
 	"strconv"
-	"wms_slave/route/stock/model"
 	"wms_slave/server/logger"
 )
 
@@ -13,10 +12,10 @@ type StockListExcel struct {
 	file         *excelize.File
 	sheetName    string
 	filename     string
-	requestParam map[string]interface{}
+	requestParam parameter
 }
 
-func NewStockListExcel(param map[string]interface{}) *StockListExcel {
+func NewStockListExcel(param parameter) *StockListExcel {
 	s := StockListExcel{
 		file:         excelize.NewFile(),
 		requestParam: param,
@@ -30,13 +29,9 @@ func (s *StockListExcel) setFilename() {
 	s.filename = "test.xlsx"
 }
 
-func (s *StockListExcel) GetFilename() string {
-	return s.filename
-}
-
-func (s *StockListExcel) Make() {
+func (s *StockListExcel) Make() string {
 	sheetIndex := s.file.NewSheet(s.sheetName)
-	stocks, _ := model.SearchMap(s.requestParam)
+	stocks, _ := search(s.requestParam.WarehouseId, s.requestParam)
 
 	var writeResult []error
 	channel := make(chan error)
@@ -56,9 +51,10 @@ func (s *StockListExcel) Make() {
 	if err := s.file.SaveAs(s.filename); err != nil {
 		log.Panic(err)
 	}
+	return s.filename
 }
 
-func writeRow(f *excelize.File, sheetName string, i int, stock model.Stock, c chan error) {
+func writeRow(f *excelize.File, sheetName string, i int, stock Stock, c chan error) {
 	rowNo := strconv.Itoa(i + 2)
 	if err := f.SetCellValue(sheetName, "A"+rowNo, i+1); err != nil {
 		c <- err
