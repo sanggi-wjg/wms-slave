@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 	"wms_slave/route/home"
-	"wms_slave/route/stock"
+	"wms_slave/route/stock/route"
 	"wms_slave/server"
 	"wms_slave/server/middleware"
 )
@@ -32,7 +32,7 @@ func Init() *gin.Engine {
 	excel := router.Group("/v1/excel")
 	excel.Use(middleware.ExcelHeader())
 	{
-		excel.GET("/stock/list", stock.ListToExcel)
+		excel.GET("/stock/list", route.StockListToExcel)
 	}
 
 	router.GET("/long_async", func(c *gin.Context) {

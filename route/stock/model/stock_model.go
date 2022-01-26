@@ -1,4 +1,4 @@
-package stock
+package model
 
 import (
 	"gorm.io/gorm"
@@ -60,7 +60,7 @@ func (Stock) TableName() string {
 	return "stock"
 }
 
-func findById(id uint64) (Stock, error) {
+func FindById(id uint64) (Stock, error) {
 	var stock Stock
 	res := database.DB.Where(Stock{Idx: id}).Take(&stock)
 	if res.Error != nil {
@@ -69,7 +69,7 @@ func findById(id uint64) (Stock, error) {
 	return stock, nil
 }
 
-func findByStockCd(stockCd string) (*Stock, error) {
+func FindByStockCd(stockCd string) (*Stock, error) {
 	var stock Stock
 	res := database.DB.Where(Stock{StockCd: stockCd}).Take(&stock)
 	if res.Error == gorm.ErrRecordNotFound {
@@ -81,7 +81,7 @@ func findByStockCd(stockCd string) (*Stock, error) {
 	return &stock, nil
 }
 
-func searchMap(param map[string]interface{}) ([]Stock, error) {
+func SearchMap(param map[string]interface{}) ([]Stock, error) {
 	var stocks []Stock
 	//res := database.DB.Where(param).Order("regDate").Find(&stocks)
 	db := database.DB

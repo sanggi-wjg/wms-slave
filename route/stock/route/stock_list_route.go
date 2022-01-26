@@ -1,13 +1,16 @@
-package stock
+package route
 
 import (
 	"github.com/gin-gonic/gin"
+	"wms_slave/route/stock/service"
 	"wms_slave/server/logger"
 )
 
-func ListToExcel(context *gin.Context) {
+func StockListToExcel(context *gin.Context) {
 	param := makeParamMap(context)
-	filename := makeExcelFile(param)
+	excel := service.NewStockListExcel(param)
+	excel.Make()
+	filename := excel.GetFilename()
 
 	context.Header("Content-Description", "File Transfer")
 	context.Header("Content-Transfer-Encoding", "binary")
