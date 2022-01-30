@@ -1,7 +1,6 @@
-package stock
+package model
 
 import (
-	"fmt"
 	"gorm.io/gorm"
 	"time"
 	"wms_slave/server/database"
@@ -55,6 +54,9 @@ type Stock struct {
 	ExtraData            string    `gorm:"column:extraData"`
 	IsCosmeticsOrder     string    `gorm:"column:isCosmeticsOrder"`
 	StockBatchNo         string    `gorm:"column:stockBatchNo"`
+
+	// Additional
+	IntervalDate uint `json:"intervalDate"`
 }
 
 func (Stock) TableName() string {
@@ -82,37 +84,42 @@ func FindByStockCd(warehouseId string, stockCd string) (*Stock, error) {
 	return &stock, nil
 }
 
-func ifValueThenWhereEqual(db *gorm.DB, column string, value interface{}) *gorm.DB {
-	if value != "" && value != nil {
-		return db.Where(fmt.Sprintf("%s = ?", column), value)
-	}
-	return db
-}
-
-func search(warehouseId string, param parameter) ([]Stock, error) {
+func Search(warehouseId string, param map[string]interface{}) ([]Stock, error) {
 	var stocks []Stock
-	//res := database.DB.Where(param).Order("regDate").Find(&stocks)
 	db := database.DB[warehouseId]
 
-	if param.FromDate != "" {
-		t, _ := time.Parse("2006-01-02", param.FromDate)
+	if param["fromDate"] != "" {
+		t, _ := time.Parse("2006-01-02", param["fromDate"].(string))
 		ts := t.Format("2006-01-02 15:04:05")
 		db = db.Where("regDate >= ?", ts)
 	}
-	if param.ToDate != "" {
-		t, _ := time.Parse("2006-01-02", param.ToDate)
+	if param["toDate"] != "" {
+		t, _ := time.Parse("2006-01-02", param["toDate"].(string))
 		ts := t.Format("2006-01-02") + " 23:59:59"
 		db = db.Where("regDate <= ?", ts)
 	}
-	//if param["partnerId"] != "" {
-	//	db = db.Where("partnerId = ?", param["partnerId"])
-	//}
-	db = ifValueThenWhereEqual(db, "partnerId", param.PartnerId)
-	db = ifValueThenWhereEqual(db, "productOwner", param.ProductOwner)
-	db = ifValueThenWhereEqual(db, "partnerUserType", param.PartnerUserType)
-	db = ifValueThenWhereEqual(db, "transferCompany", param.TransferCompany)
+	if param["code"] != "" {
+		db = db.Where("( stockCd = ? OR packageCd = ? productItemCd = ? OR productCd = ? OR rackCd = ?)",
+			param["code"], param["code"], param["code"], param["code"], param["code"])
+	}
 
+	db = database.IfEqual(db, "partnerId", param["partnerId"])
+	db = database.IfEqual(db, "productOwner", param["productOwner"])
+	db = database.IfEqual(db, "productVendorName", param["productVendorName"])
+	db = database.IfEqual(db, "stockType", param["stockType"])
+	db = database.IfEqual(db, "partnerUserType", param["partnerUserType"])
+	db = database.IfEqual(db, "transferCompany", param["transferCompany"])
+	db = database.IfEqual(db, "rackCd", param["rackCd"])
+
+	db = database.IfContains(db, "productName", param["productName"].(string))
+	db = database.IfContains(db, "productOption", param["productOption"].(string))
+	db = database.IfContains(db, "productBrandName", param["productBrandName"].(string))
+
+	db = db.Select("rackCd, partnerId, partnerName, productOwner, partnerUserType, partnerUserTypeName, regDate, productItemCd, " +
+		" productCd, productUnitPrice, ProductVendorPrice, ProductVendorName, ProductName, ProductOption, StockBatchNo, " +
+		" TO_DAYS(CURRENT_DATE())-TO_DAYS(DATE_FORMAT(regDate,'%Y-%m-%d')) AS intervalDate ")
 	res := db.Order("regDate").Find(&stocks)
+
 	if res.Error != nil && res.Error != gorm.ErrRecordNotFound {
 		return nil, res.Error
 	}

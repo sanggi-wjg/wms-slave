@@ -79,3 +79,35 @@ func getCN02DSN() string {
 //	UpdatedAt time.Time
 //	DeletedAt gorm.DeletedAt
 //}
+
+// TODO : Gt, Gte, Lt, Lte, IfNotEqual
+
+func Contains(db *gorm.DB, column string, value string) *gorm.DB {
+	return db.Where(fmt.Sprintf("%s = ?", column), "%"+value+"%")
+}
+
+func NotContains(db *gorm.DB, column string, value string) *gorm.DB {
+	return db.Not(fmt.Sprintf("%s = ?", column), "%"+value+"%")
+}
+
+func IfContains(db *gorm.DB, column string, value string) *gorm.DB {
+	if value != "" {
+		return Contains(db, column, value)
+	}
+	return db
+}
+
+func Equal(db *gorm.DB, column string, value interface{}) *gorm.DB {
+	return db.Where(fmt.Sprintf("%s = ?", column), value)
+}
+
+func NotEqual(db *gorm.DB, column string, value interface{}) *gorm.DB {
+	return db.Not(fmt.Sprintf("%s = ?", column), value)
+}
+
+func IfEqual(db *gorm.DB, column string, value interface{}) *gorm.DB {
+	if value != "" && value != nil {
+		return Equal(db, column, value)
+	}
+	return db
+}
