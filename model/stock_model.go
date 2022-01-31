@@ -56,7 +56,7 @@ type Stock struct {
 	StockBatchNo         string    `gorm:"column:stockBatchNo"`
 
 	// Additional
-	IntervalDate uint `json:"intervalDate"`
+	IntervalDate uint `gorm:"column:intervalDate"`
 }
 
 func (Stock) TableName() string {
@@ -88,6 +88,10 @@ func Search(warehouseId string, param map[string]interface{}) ([]Stock, error) {
 	var stocks []Stock
 	db := database.DB[warehouseId]
 
+	db = db.Select("rackCd, partnerId, partnerName, productOwner, partnerUserType, partnerUserTypeName, regDate, productItemCd," +
+		" productCd, productUnitPrice, ProductVendorPrice, ProductVendorName, ProductName, ProductOption, StockBatchNo," +
+		" TO_DAYS(CURRENT_DATE())-TO_DAYS(DATE_FORMAT(regDate,'%Y-%m-%d')) AS intervalDate")
+
 	if param["fromDate"] != "" {
 		t, _ := time.Parse("2006-01-02", param["fromDate"].(string))
 		ts := t.Format("2006-01-02 15:04:05")
@@ -102,6 +106,26 @@ func Search(warehouseId string, param map[string]interface{}) ([]Stock, error) {
 		db = db.Where("( stockCd = ? OR packageCd = ? productItemCd = ? OR productCd = ? OR rackCd = ?)",
 			param["code"], param["code"], param["code"], param["code"], param["code"])
 	}
+	if param["inWaybillNo"] != "" {
+		inLogSubQuery := database.DB[warehouseId].Table("in_log").Select("productCd")
+		db = db.Where("productCd IN (?)", inLogSubQuery.Where("inWaybillNo = ?", param["inWaybillNo"]))
+	}
+	if param["inOrderCd"] != "" {
+		inLogSubQuery := database.DB[warehouseId].Table("in_log").Select("productCd")
+		db = db.Where("productCd IN (?)", inLogSubQuery.Where("inOrderCd = ?", param["inOrderCd"]))
+	}
+	if param["productGroupCLOTH"].(bool) {
+		db = db.Where("productGroup IN ('TS','BL','HD','KN','DD','BX','CT','CS','JK','CA','VT','YR','XZ','PD','OP','LS','MS','SS','LP','MP','SP','JN','LG','JS','CL','ST','CE','SE','SC','MF','GL','NY','SY','YJ','BK','LD','QT') ")
+	}
+	if param["productGroupACCESSORY"].(bool) {
+		db = db.Where("productGroup IN ('ER','XL','RG','BR','JL','BC','HA','ET','BE','GS','HT','GJ','KC','PC','PJ','AT') ")
+	}
+	if param["productGroupBAGSHOES"].(bool) {
+		db = db.Where("productGroup IN ('HB','CB','SB','DB','MB','BB','WA','CP','SH','BT','SD','HS','SL','HH','FS','PX') ")
+	}
+	if param["productGroupCOSMETIC"].(bool) {
+		db = db.Where("productGroup IN ('CM') ")
+	}
 
 	db = database.IfEqual(db, "partnerId", param["partnerId"])
 	db = database.IfEqual(db, "productOwner", param["productOwner"])
@@ -115,11 +139,7 @@ func Search(warehouseId string, param map[string]interface{}) ([]Stock, error) {
 	db = database.IfContains(db, "productOption", param["productOption"].(string))
 	db = database.IfContains(db, "productBrandName", param["productBrandName"].(string))
 
-	db = db.Select("rackCd, partnerId, partnerName, productOwner, partnerUserType, partnerUserTypeName, regDate, productItemCd, " +
-		" productCd, productUnitPrice, ProductVendorPrice, ProductVendorName, ProductName, ProductOption, StockBatchNo, " +
-		" TO_DAYS(CURRENT_DATE())-TO_DAYS(DATE_FORMAT(regDate,'%Y-%m-%d')) AS intervalDate ")
 	res := db.Order("regDate").Find(&stocks)
-
 	if res.Error != nil && res.Error != gorm.ErrRecordNotFound {
 		return nil, res.Error
 	}

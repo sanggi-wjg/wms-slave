@@ -9,7 +9,6 @@ import (
 	"wms_slave/model"
 	"wms_slave/server/global"
 	"wms_slave/server/logger"
-	"wms_slave/server/route_util"
 )
 
 func ListExcelDownload(context *gin.Context) {
@@ -53,7 +52,7 @@ func ListExcelDownload(context *gin.Context) {
 
 func makeParameter(c *gin.Context) map[string]interface{} {
 	p := map[string]interface{}{}
-	p["warehouseDomain"] = c.GetHeader("WAREHOUSE_DOMAIN")
+	p["warehouseDomain"] = c.DefaultQuery("WAREHOUSE_DOMAIN", "")
 	p["warehouseId"] = global.GetWarehouseIdByDomain(p["warehouseDomain"].(string))
 	p["fromDate"] = c.DefaultQuery("fromDate", "")
 	p["toDate"] = c.DefaultQuery("toDate", "")
@@ -72,11 +71,11 @@ func makeParameter(c *gin.Context) map[string]interface{} {
 	p["inWaybillNo"] = c.DefaultQuery("inWaybillNo", "")
 	p["inOrderCd"] = c.DefaultQuery("inOrderCd", "")
 
-	p["partnerExcelFlag"] = route_util.ConvertGetQueryStringToBoolean(c.DefaultQuery("partnerExcelFlag", ""))
-	p["productGroupCLOTH"] = route_util.ConvertGetQueryStringToBoolean(c.DefaultQuery("productGroup_CLOTHING", ""))
-	p["productGroupACCESSORY"] = route_util.ConvertGetQueryStringToBoolean(c.DefaultQuery("productGroup_ACCESSORY", ""))
-	p["productGroupBAGSHOES"] = route_util.ConvertGetQueryStringToBoolean(c.DefaultQuery("productGroup_BAGSHOES", ""))
-	p["productGroupCOSMETIC"] = route_util.ConvertGetQueryStringToBoolean(c.DefaultQuery("productGroup_COSMETICS", ""))
+	p["partnerExcelFlag"] = global.ConvertGetQueryStringToBoolean(c.DefaultQuery("partnerExcelFlag", ""))
+	p["productGroupCLOTH"] = global.ConvertGetQueryStringToBoolean(c.DefaultQuery("productGroup_CLOTHING", ""))
+	p["productGroupACCESSORY"] = global.ConvertGetQueryStringToBoolean(c.DefaultQuery("productGroup_ACCESSORY", ""))
+	p["productGroupBAGSHOES"] = global.ConvertGetQueryStringToBoolean(c.DefaultQuery("productGroup_BAGSHOES", ""))
+	p["productGroupCOSMETIC"] = global.ConvertGetQueryStringToBoolean(c.DefaultQuery("productGroup_COSMETICS", ""))
 	defer func() {
 		logger.Log.Debugf("%+v", p)
 	}()
@@ -87,34 +86,42 @@ func makeParameter(c *gin.Context) map[string]interface{} {
 // Service //
 type stockListExcel struct {
 	file         *excelize.File
-	sheetName    string
-	filename     string
+	excelDetail  *excelDetail
 	requestParam map[string]interface{}
+}
+
+type excelDetail struct {
+	sheetName  string
+	filename   string
+	sheetIndex int
 }
 
 func newStockListExcel(param map[string]interface{}) *stockListExcel {
 	s := stockListExcel{
 		file:         excelize.NewFile(),
 		requestParam: param,
-		sheetName:    "Sheet1",
+		excelDetail: &excelDetail{
+			sheetName: "Sheet1",
+		},
 	}
 	s.setFilename()
 	return &s
 }
 
 func (s *stockListExcel) setFilename() {
-	s.filename = "test.xlsx"
+	s.excelDetail.filename = "test.xlsx"
 }
 
 func (s *stockListExcel) Make() string {
-	sheetIndex := s.file.NewSheet(s.sheetName)
-	stocks, _ := model.Search(s.requestParam["warehouseId"].(string), s.requestParam)
+	sheetIndex := s.file.NewSheet(s.excelDetail.sheetName)
+	s.setColWidth()
 
 	var writeResult []error
 	channel := make(chan error)
+	stocks, _ := model.Search(s.requestParam["warehouseId"].(string), s.requestParam)
 
 	for i := 0; i < len(stocks); i++ {
-		go writeRow(s.file, s.sheetName, i, stocks[i], channel)
+		go writeRow(s.file, s.excelDetail.sheetName, i, stocks[i], channel)
 	}
 	for i := 0; i < len(stocks); i++ {
 		c := <-channel
@@ -124,11 +131,32 @@ func (s *stockListExcel) Make() string {
 		writeResult = append(writeResult, c)
 	}
 
+	s.setStyle(len(stocks))
 	s.file.SetActiveSheet(sheetIndex)
-	if err := s.file.SaveAs(s.filename); err != nil {
+	if err := s.file.SaveAs(s.excelDetail.filename); err != nil {
 		log.Panic(err)
 	}
-	return s.filename
+	return s.excelDetail.filename
+}
+
+func (s *stockListExcel) setColWidth() {
+	if err := s.file.SetColWidth(s.excelDetail.sheetName, "A", "A", 10); err != nil {
+		logger.Log.Error("SetColWidth A error", err)
+	}
+	if err := s.file.SetColWidth(s.excelDetail.sheetName, "B", "L", 20); err != nil {
+		logger.Log.Error("SetColWidth B:L error", err)
+	}
+	if err := s.file.SetColWidth(s.excelDetail.sheetName, "M", "N", 100); err != nil {
+		logger.Log.Error("SetColWidth M:N error", err)
+	}
+}
+
+func (s *stockListExcel) setStyle(size int) {
+	style, err := s.file.NewStyle(`{"border":[{"type":"left","color":"000000","style":1},{"type":"top","color":"000000","style":1},{"type":"bottom","color":"000000","style":1},{"type":"right","color":"000000","style":1}]}`)
+	if err != nil {
+		fmt.Println(err)
+	}
+	err = s.file.SetCellStyle(s.excelDetail.sheetName, "A1", "N"+strconv.Itoa(size+1), style)
 }
 
 func writeRow(f *excelize.File, sheetName string, i int, stock model.Stock, c chan error) {

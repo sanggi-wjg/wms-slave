@@ -9,3 +9,10 @@ func GetWarehouseIdByDomain(warehouseDomain string) string {
 	}
 	return ""
 }
+
+func ConvertGetQueryStringToBoolean(queryValue string) bool {
+	if queryValue == "Y" || queryValue == "T" {
+		return true
+	}
+	return false
+}

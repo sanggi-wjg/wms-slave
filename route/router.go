@@ -30,9 +30,9 @@ func Init() *gin.Engine {
 
 	// Excel
 	excel := router.Group("/v1/excel")
-	excel.Use(middleware.ExcelHeader())
+	excel.Use(middleware.RequestDomain())
 	{
-		// http://localhost:9000/v1/excel/stock/list?partnerId=jamy&fromDate=2020-01-01&toDate=2022-01-01
+		// http://localhost:9000/v1/excel/stock/list?WAREHOUSE_DOMAIN=kr01.warehouse.pickby.us&partnerId=jamy&fromDate=2020-01-01&toDate=2022-01-01
 		excel.GET("/stock/list", stock.ListExcelDownload)
 	}
 
