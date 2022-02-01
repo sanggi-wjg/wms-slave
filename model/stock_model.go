@@ -56,7 +56,8 @@ type Stock struct {
 	StockBatchNo         string    `gorm:"column:stockBatchNo"`
 
 	// Additional
-	IntervalDate uint `gorm:"column:intervalDate"`
+	IntervalDate uint   `gorm:"column:intervalDate"`
+	ExpireDate   string `gorm:"column:expireDate"`
 }
 
 func (Stock) TableName() string {
@@ -88,9 +89,10 @@ func Search(warehouseId string, param map[string]interface{}) ([]Stock, error) {
 	var stocks []Stock
 	db := database.DB[warehouseId]
 
-	db = db.Select("rackCd, partnerId, partnerName, productOwner, partnerUserType, partnerUserTypeName, regDate, productItemCd," +
-		" productCd, productUnitPrice, ProductVendorPrice, ProductVendorName, ProductName, ProductOption, StockBatchNo," +
-		" TO_DAYS(CURRENT_DATE())-TO_DAYS(DATE_FORMAT(regDate,'%Y-%m-%d')) AS intervalDate")
+	db = db.Select("rackCd, partnerId, partnerName, productOwner, partnerUserType, partnerUserTypeName, regDate, productItemCd, " +
+		"productCd, productUnitPrice, productVendorPrice, productVendorName, productName, productOption, stockBatchNo, " +
+		"TO_DAYS(CURRENT_DATE())-TO_DAYS(DATE_FORMAT(regDate,'%Y-%m-%d')) AS intervalDate, " +
+		"STR_TO_DATE(RIGHT(stockBatchNo, 6), '%y%m%d') AS expireDate ")
 
 	if param["fromDate"] != "" {
 		t, _ := time.Parse("2006-01-02", param["fromDate"].(string))
